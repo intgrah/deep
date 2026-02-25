@@ -7,3 +7,5 @@ import Deep.Attention
 import Deep.Transformer
 import Deep.GPT
 import Deep.GPT3
+import Deep.Loss
+import Deep.Optimizer
