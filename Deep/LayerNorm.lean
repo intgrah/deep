@@ -5,11 +5,6 @@ noncomputable section
 
 open Real (sqrt)
 
-def mean {n : ℕ} [NeZero n] (x : Vec n) : ℝ := (∑ i, x i) / n
-
-def variance {n : ℕ} [NeZero n] (x : Vec n) : ℝ :=
-  (∑ i, (x i - mean x) ^ 2) / n
-
 structure LayerNorm (n : ℕ) where
   γ : Vec n
   β : Vec n

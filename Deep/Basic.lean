@@ -10,4 +10,9 @@ abbrev Vec (n : ℕ) := Fin n → ℝ
 
 def res {α : Type*} [Add α] (f : α → α) (x : α) : α := x + f x
 
+def mean {n : ℕ} [NeZero n] (x : Vec n) : ℝ := (∑ i, x i) / n
+
+def variance {n : ℕ} [NeZero n] (x : Vec n) : ℝ :=
+  (∑ i, (x i - mean x) ^ 2) / n
+
 end
