@@ -1,4 +1,4 @@
-import Deep.Basic
+import Deep.Affine
 import Deep.Activation
 
 noncomputable section
@@ -8,13 +8,11 @@ open Real (tanh)
 
 structure RNNCell (input hidden : ℕ) where
   σ : ℝ → ℝ
-  Wh : Mat hidden hidden
-  Wx : Mat hidden input
-  b : Vec hidden
+  A : Affine hidden (hidden + input)
 
 def RNNCell.step {input hidden : ℕ} (cell : RNNCell input hidden)
     (h : Vec hidden) (x : Vec input) : Vec hidden :=
-  cell.σ ∘ (cell.Wh *ᵥ h + cell.Wx *ᵥ x + cell.b)
+  cell.σ ∘ cell.A.apply (Fin.addCases h x)
 
 def RNNCell.fold {input hidden seqLen : ℕ}
     (cell : RNNCell input hidden) (h₀ : Vec hidden) (X : Mat seqLen input) : Vec hidden :=
@@ -28,32 +26,25 @@ def RNNCell.scan {input hidden seqLen : ℕ}
     (h₀, 0)).2
 
 def RNNCell.numParams (input hidden : ℕ) : ℕ :=
-  hidden * hidden + hidden * input + hidden
+  Affine.numParams hidden (hidden + input)
 
 structure LSTMState (hidden : ℕ) where
   h : Vec hidden
   c : Vec hidden
 
 structure LSTMCell (input hidden : ℕ) where
-  Wf : Mat hidden hidden
-  Uf : Mat hidden input
-  bf : Vec hidden
-  Wi : Mat hidden hidden
-  Ui : Mat hidden input
-  bi : Vec hidden
-  Wc : Mat hidden hidden
-  Uc : Mat hidden input
-  bc : Vec hidden
-  Wo : Mat hidden hidden
-  Uo : Mat hidden input
-  bo : Vec hidden
+  Af : Affine hidden (hidden + input)
+  Ai : Affine hidden (hidden + input)
+  Ac : Affine hidden (hidden + input)
+  Ao : Affine hidden (hidden + input)
 
 def LSTMCell.step {input hidden : ℕ} (cell : LSTMCell input hidden)
     (s : LSTMState hidden) (x : Vec input) : LSTMState hidden :=
-  let f := sigmoid ∘ (cell.Wf *ᵥ s.h + cell.Uf *ᵥ x + cell.bf)
-  let i := sigmoid ∘ (cell.Wi *ᵥ s.h + cell.Ui *ᵥ x + cell.bi)
-  let g := tanh ∘ (cell.Wc *ᵥ s.h + cell.Uc *ᵥ x + cell.bc)
-  let o := sigmoid ∘ (cell.Wo *ᵥ s.h + cell.Uo *ᵥ x + cell.bo)
+  let hx := Fin.addCases s.h x
+  let f := sigmoid ∘ cell.Af.apply hx
+  let i := sigmoid ∘ cell.Ai.apply hx
+  let g := tanh ∘ cell.Ac.apply hx
+  let o := sigmoid ∘ cell.Ao.apply hx
   let c' := f * s.c + i * g
   let h' := o * (tanh ∘ c')
   ⟨h', c'⟩
@@ -70,24 +61,19 @@ def LSTMCell.scan {input hidden seqLen : ℕ} (cell : LSTMCell input hidden)
     (s₀, 0)).2
 
 def LSTMCell.numParams (input hidden : ℕ) : ℕ :=
-  4 * (hidden * hidden + hidden * input + hidden)
+  4 * Affine.numParams hidden (hidden + input)
 
 structure GRUCell (input hidden : ℕ) where
-  Wz : Mat hidden hidden
-  Uz : Mat hidden input
-  bz : Vec hidden
-  Wr : Mat hidden hidden
-  Ur : Mat hidden input
-  br : Vec hidden
-  Wh : Mat hidden hidden
-  Uh : Mat hidden input
-  bh : Vec hidden
+  Az : Affine hidden (hidden + input)
+  Ar : Affine hidden (hidden + input)
+  Ah : Affine hidden (hidden + input)
 
 def GRUCell.step {input hidden : ℕ} (cell : GRUCell input hidden)
     (h : Vec hidden) (x : Vec input) : Vec hidden :=
-  let z := sigmoid ∘ (cell.Wz *ᵥ h + cell.Uz *ᵥ x + cell.bz)
-  let r := sigmoid ∘ (cell.Wr *ᵥ h + cell.Ur *ᵥ x + cell.br)
-  let g := tanh ∘ (cell.Wh *ᵥ (r * h) + cell.Uh *ᵥ x + cell.bh)
+  let hx := Fin.addCases h x
+  let z := sigmoid ∘ cell.Az.apply hx
+  let r := sigmoid ∘ cell.Ar.apply hx
+  let g := tanh ∘ cell.Ah.apply (Fin.addCases (r * h) x)
   (1 - z) * h + z * g
 
 def GRUCell.fold {input hidden seqLen : ℕ}
@@ -102,7 +88,7 @@ def GRUCell.scan {input hidden seqLen : ℕ}
     (h₀, 0)).2
 
 def GRUCell.numParams (input hidden : ℕ) : ℕ :=
-  3 * (hidden * hidden + hidden * input + hidden)
+  3 * Affine.numParams hidden (hidden + input)
 
 structure RNN (input hidden : ℕ) (numLayers : ℕ) where
   first : RNNCell input hidden
